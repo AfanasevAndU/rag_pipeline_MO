@@ -1,0 +1,17 @@
+Lecture RAG API
+
+RAG (Retrieval-Augmented Generation) сервис для поиска по лекциям.
+
+Сервис:
+- загружает PDF лекции
+- разбивает их на chunks
+- создаёт embeddings
+- сохраняет их в Qdrant
+- предоставляет API для поиска релевантных фрагментов из лекций
+
+Запуск
+Лекции загружаются в папку data/lectures
+Устанавливаем зависимости:
+pip install -r requirements.txt
+Далее запускаем проект:
+python run.py

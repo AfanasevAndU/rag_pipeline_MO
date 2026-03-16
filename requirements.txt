@@ -1,0 +1,7 @@
+pdfplumber
+sentence-transformers
+qdrant-client
+tqdm
+fastapi
+uvicorn
+nltk
