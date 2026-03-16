@@ -1,58 +1,35 @@
 # rag/chunker.py
 import re
-import nltk
-from nltk.tokenize import sent_tokenize
 
-# попытка убедиться, что требуемые ресурсы есть (не блокирует работу — скачает если нужно)
-def ensure_nltk_resource(name):
-    try:
-        nltk.data.find(name)
-    except LookupError:
-        # скачиваем по короткому имени ('punkt' или 'punkt_tab')
-        try:
-            nltk.download(name.split("/")[-1])
-        except Exception:
-            # в некоторых окружениях загрузка может не пройти — тогда будем использовать fallback
-            return False
-    return True
-
-# проверим оба варианта (чтобы покрыть разные версии NLTK)
-_have_punkt = ensure_nltk_resource("tokenizers/punkt")
-_have_punkt_tab = ensure_nltk_resource("tokenizers/punkt_tab")
-
-def _simple_sent_tokenize(text: str):
+def clean_repeated_words(text, max_repeat=2):
     """
-    Лёгкий резервный токенайзер, не требующий nltk.
-    Делит текст по точке/вопрос/восклицанию + пробел(ы).
+    Убирает слова, которые повторяются подряд более max_repeat раз.
     """
-    if not text:
-        return []
-    # оставляем знаки препинания в конце предложений, убираем лишние пробелы
-    sentences = re.split(r'(?<=[.!?])\s+', text.strip())
-    # фильтруем пустые результаты и короткие «шумные» фрагменты
-    return [s.strip() for s in sentences if s.strip()]
+    def repl(match):
+        word = match.group(1)
+        return " ".join([word] * max_repeat)
+    
+    pattern = r'\b(\w+)\b(?:\s+\1\b){' + str(max_repeat) + r',}'
+    return re.sub(pattern, repl, text, flags=re.IGNORECASE)
 
-def chunk_text(text, chunk_size=5, overlap=2):
+def chunk_text(text, chunk_size=90, overlap=30):
     """
-    Разбивает текст на чанки по предложениям.
+    Делит текст на чанки по словам.
+    chunk_size - количество слов в одном чанке
+    overlap - количество слов для перекрытия
     """
-    # сначала пробуем nltk.sent_tokenize если ресурсы есть
-    try:
-        if _have_punkt or _have_punkt_tab:
-            sentences = sent_tokenize(text)
-        else:
-            # если ресурсы не доступны, используем fallback
-            sentences = _simple_sent_tokenize(text)
-    except LookupError:
-        # на всякий случай — если что-то пошло не так внутри sent_tokenize
-        sentences = _simple_sent_tokenize(text)
-
+    text = text.replace("\n", " ")
+    text = re.sub(r'\s+', " ", text).strip()
+    
+    words = text.split()
     chunks = []
-    step = max(1, chunk_size - overlap)
 
-    for i in range(0, len(sentences), step):
-        chunk = " ".join(sentences[i:i + chunk_size]).strip()
-        if len(chunk) > 50:
+    step = max(1, chunk_size - overlap)
+    for i in range(0, len(words), step):
+        chunk_words = words[i:i + chunk_size]
+        if len(chunk_words) > 5:
+            chunk = " ".join(chunk_words)
+            chunk = clean_repeated_words(chunk, max_repeat=2)
             chunks.append(chunk)
 
     return chunks

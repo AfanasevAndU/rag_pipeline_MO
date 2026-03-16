@@ -5,3 +5,4 @@ tqdm
 fastapi
 uvicorn
 nltk
+torch
